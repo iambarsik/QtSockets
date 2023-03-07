@@ -8,7 +8,6 @@ Server::Server(QMainWindow *parent)
 {
     ui->setupUi(this);
     m_server = new QTcpServer(this);
-    //setGeometry(100,100,400,300);
 
     if(m_server->listen(QHostAddress::Any, 9999))   {
        connect(this, &Server::newMessage, this, &Server::displayMessage);
@@ -48,13 +47,11 @@ void Server::appendToSocketList(QTcpSocket* socket) {
     connect(socket, &QTcpSocket::readyRead, this, &Server::network);
     connect(socket, &QTcpSocket::disconnected, this, &Server::discardSocket);
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(getErrorCode(QAbstractSocket::SocketError)));
-    //displayMessage(QString("INFO :: Node with %1 descriptor has connected").arg(socket->socketDescriptor()));
     ui->textEdit->append(QString("Node %1 descriptor has connected").arg(socket->socketDescriptor()));
 }
 
 void Server::getErrorCode(QAbstractSocket::SocketError errorCode)   {
     qDebug() << "Socket Error = " << errorCode;
-    //ui->textEdit->append(QString("Socket ERROR, code: %1 ").arg(errorCode));
 }
 
 void Server::network() {
@@ -143,30 +140,6 @@ void Server::network() {
                 // try to unpack big package
             }
         }
-
-
-
-/*
-        while(bufferRead.length() >= 24)  {
-
-            QByteArray frame;
-            frame = bufferRead.mid(0,24);
-            frame.remove(0,8);
-
-            if(frame.length() >= 16)    {                   // checking if frame is correct
-                bool status;
-                int iCommand = frame.mid( 0,4).toHex().toInt(&status,16);
-                int iPar1    = frame.mid( 4,4).toHex().toInt(&status,16);
-                int iPar2    = frame.mid( 8,4).toHex().toInt(&status,16);
-                int iTime    = frame.mid(12,4).toHex().toInt(&status,16);
-                bufferRead.remove(0, 24);                   // delete frame from buffer
-
-                //qDebug() << "Input command : " << iCommand << " " << iPar1 << " " << iPar2;
-
-                ui->textEdit->append(QString("<<-- C :: %1 %2 %3").arg(iCommand).arg(iPar1).arg(iPar2));
-            }
-        }
-*/
     }
 }
 
@@ -259,20 +232,7 @@ void Server::sendMessage(QTcpSocket* socket, command_type type)    {
                 dataSend.append((char) 0x7F);           // 6 байт - тип кадра 0
                 dataSend.append((char) 0x00);           // 7 байт - зарезервировано
                 dataSend.append((char) 0x00);           // 8 байт - зарезервировано
-/*
-                // 4 байта - первый параметр команды
-                bufferSend.append((char) 0x00);
-                bufferSend.append((char) 0x00);
-                bufferSend.append((char) 0x00);
-                bufferSend.append((char) 0x00);
-                // первый параметр команды
-                // 4 байта - второй параметр команды
-                bufferSend.append((char) 0x00);
-                bufferSend.append((char) 0x00);
-                bufferSend.append((char) 0x00);
-                bufferSend.append((char) 0x00);
-                // второй параметр команды
-*/
+
                 // 4 байта - модельное время команды в миллисекундах
                 bufferSend.append((char) 0x00);
                 bufferSend.append((char) 0x00);

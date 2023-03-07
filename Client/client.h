@@ -37,6 +37,8 @@ public:
     void sendMessage(command_type type);
     void addCommand(command_t command);
 
+    QString sHost;
+
 signals:
     void newMessage(QString);
 
@@ -49,6 +51,10 @@ private slots:
     void on_pushButton_clicked();
 
     void OnTimer();
+
+    void slotReConnect();
+    void slotStopReConnect();
+    void slotStartReConnect();
 
     void on_pushButton_2_clicked();
 
@@ -66,5 +72,6 @@ private:
     bool bConnected;
     bool bInProcess;
     QTimer *timer;
+    QTimer *reconnect_timer;
 };
 #endif // CLIENT_H
