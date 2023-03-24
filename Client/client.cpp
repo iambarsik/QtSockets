@@ -38,8 +38,9 @@ void Client::network()   {
     if( socket->state() == QAbstractSocket::ConnectedState )    {
         bufferRead = socket->readAll();
         //qDebug() << bufferRead;
+        qDebug() << bufferRead.size();
 
-        if(bufferRead.length() >= 24)   {
+        while(bufferRead.length() >= 24)   {
             bool status;
             QByteArray header;
             header = bufferRead.mid(0,8);
@@ -133,7 +134,7 @@ void Client::sendMessage(command_type type)   {
 
                         socket->write(dataSend);
                         socket->flush();
-                        socket->waitForBytesWritten(10000);
+                        socket->waitForBytesWritten(10);
                     }
                 } else {
                     QMessageBox::critical(this,"QTCPClient","Socket doesn't seem to be opened");

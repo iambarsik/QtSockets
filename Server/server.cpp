@@ -101,7 +101,7 @@ void Server::network() {
             socket->waitForBytesWritten(10000);
         }
 
-        if(bufferRead.length() >= 24)   {
+        while(bufferRead.length() >= 24)   {
             bool status;
             QByteArray header;
             header = bufferRead.mid(0,8);
@@ -249,7 +249,7 @@ void Server::sendMessage(QTcpSocket* socket, command_type type)    {
 
             socket->write(dataSend);
             socket->flush();
-            socket->waitForBytesWritten(10000);
+            socket->waitForBytesWritten(10);
         break;
     }
 }
@@ -299,3 +299,4 @@ void Server::on_pushButton_clicked()    {
     command_t command = { code, par1, par2, 0};
     addCommand(command);
 }
+
