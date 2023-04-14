@@ -234,12 +234,11 @@ void Client::OnTimer()  {
 void Client::slotReConnect()
 {
     socket->connectToHost(sHost,9999);
-    if(socket->waitForConnected(100))  {
+    if(socket->waitForConnected(1000))  {
         this->setWindowTitle("Connected to Server");
         ui->textEdit->append(QString("System :: connected to server"));
         bConnected = true;
     } else {
-        //ui->textEdit->append(QString("System :: connecting ERROR"));
         return;
     }
     timer->start();
@@ -261,22 +260,7 @@ void Client::slotStartReConnect()
 
 void Client::on_pushButton_2_clicked()  {
 
-    QString sHost = ui->lineHost->text();
-/*
-    socket->connectToHost(host,9999);
-
-    if(socket->waitForConnected())  {
-        this->setWindowTitle("Connected to Server");
-        ui->textEdit->append(QString("System :: connected to server"));
-        bConnected = true;
-    } else {
-        ui->textEdit->append(QString("System :: connecting ERROR"));
-        return;
-    }
-*/
-    //timer->start();
-    //bInited = false;
-    //sendMessage(command_type::com_init);
+    sHost = ui->lineHost->text();
 
     reconnect_timer = new QTimer;
 
@@ -285,13 +269,5 @@ void Client::on_pushButton_2_clicked()  {
     connect(reconnect_timer,SIGNAL(timeout()),this,SLOT(slotReConnect()));
     connect(socket,SIGNAL(connected()),this,SLOT(slotStopReConnect()));
     connect(socket,SIGNAL(disconnected()),this,SLOT(slotStartReConnect()));
-
-
-
-
-
-
-
-
 
 }
