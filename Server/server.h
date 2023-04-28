@@ -34,6 +34,7 @@ public:
     Server(QMainWindow *parent = nullptr);
     ~Server();
 
+    bool isStarted() { return m_started; }
     void addCommand(command_t command);
 
 signals:
@@ -54,12 +55,15 @@ private slots:
 
     void on_pushButton_clicked();
 
+    void on_pushButton_2_clicked();
+
 private:
     Ui::Server *ui;
 
     bool bInited;
 
     QTcpServer* m_server;
+    bool m_started;
     QSet<QTcpSocket*> connection_set;
     QByteArray bufferRead, bufferSend, dataSend;
 

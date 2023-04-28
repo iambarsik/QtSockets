@@ -2,6 +2,9 @@
 #include "ui_client.h"
 #include <QHostAddress>
 
+#include <QSettings>
+#include <QTextCodec>
+
 Client::Client(QMainWindow *parent)
     : QMainWindow(parent)
     , sHost("127.0.0.1")
@@ -11,6 +14,17 @@ Client::Client(QMainWindow *parent)
 {
     ui->setupUi(this);
     setCentralWidget(ui->centralwidget);
+
+    QString SettingsName = "config.ini";
+    QSettings settings(SettingsName, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+
+    settings.beginGroup("MAIN_SETTINGS");
+    ui->linePort->setText((settings.value("ServerPort", 9999)).toString());
+    ui->lineMain->setText((settings.value("MainNode", 2)).toString());
+    ui->lineCurrent->setText((settings.value("NodeId", 3)).toString());
+    ui->lineFrame->setText((settings.value("FrameType", 0)).toString());
+    settings.endGroup();
 
     socket = new QTcpSocket(this);
 
@@ -104,9 +118,9 @@ void Client::sendMessage(command_type type)   {
             if(socket)  {
                 if(socket->isOpen())    {
                     if(bInited == false) {
-                        int MainNode  = 2;
-                        int NodeID    = 1;
-                        int FrameType = 0x15;
+                        int MainNode  = ui->lineMain->text().toInt();
+                        int NodeID    = ui->lineCurrent->text().toInt();
+                        int FrameType = 127;
                         QString name  = "127.0.0.1";
 
                         dataSend.clear();
@@ -143,31 +157,41 @@ void Client::sendMessage(command_type type)   {
                 QMessageBox::critical(this,"QTCPClient","Not connected");
             }
         break;
-        case com_ping:
+        case com_ping: {
             dataSend.clear();
+
+            int MainNode  = ui->lineMain->text().toInt();
+            int NodeID    = ui->lineCurrent->text().toInt();
+            int FrameType = ui->lineFrame->text().toInt();
+
             // 8 байт - заголовок кадра
             dataSend.append((char) 0x00);           // 1 байт - 0
             dataSend.append((char) 0x08);           // 2 байт - текущая длинна кадра в байтах (включая размер заголовка)
-            dataSend.append((char) 0x02);           // 3 байт - идентификатор получателя
-            dataSend.append((char) 0x01);           // 4 байт - идентификатор отправителя (номер узла)
+            dataSend.append((char) MainNode);       // 3 байт - идентификатор получателя
+            dataSend.append((char) NodeID);         // 4 байт - идентификатор отправителя (номер узла)
             dataSend.append((char) 0x01);           // 5 байт - флаг кадра ( 0 - я сервер, 1 - я клинет )
-            dataSend.append((char) 0x00);           // 6 байт - тип кадра 0
+            dataSend.append((char) FrameType);      // 6 байт - тип кадра 0
             dataSend.append((char) 0x00);           // 7 байт - зарезервировано
             dataSend.append((char) 0x00);           // 8 байт - зарезервировано
             socket->write(dataSend);
             socket->flush();
             socket->waitForBytesWritten(10000);
-        break;
+        } break;
         case com_buffer:
             if(bufferSend.size() == 12){
                 dataSend.clear();                
+
+                int MainNode  = ui->lineMain->text().toInt();
+                int NodeID    = ui->lineCurrent->text().toInt();
+                int FrameType = ui->lineFrame->text().toInt();
+
                     // 8 байт - заголовок кадра
                 dataSend.append((char) 0x00);           // 1 байт - 0
                 dataSend.append((char) 0x18);           // 2 байт - текущая длинна кадра в байтах (включая размер заголовка)
-                dataSend.append((char) 0x02);           // 3 байт - идентификатор получателя
-                dataSend.append((char) 0x01);           // 4 байт - идентификатор отправителя (номер узла)
+                dataSend.append((char) MainNode);       // 3 байт - идентификатор получателя
+                dataSend.append((char) NodeID);         // 4 байт - идентификатор отправителя (номер узла)
                 dataSend.append((char) 0x01);           // 5 байт - флаг кадра ( 0 - я сервер, 1 - я клинет )
-                dataSend.append((char) 0x7F);           // 6 байт - тип кадра 0
+                dataSend.append((char) FrameType);      // 6 байт - тип кадра 0
                 dataSend.append((char) 0x00);           // 7 байт - зарезервировано
                 dataSend.append((char) 0x00);           // 8 байт - зарезервировано
 
@@ -233,7 +257,7 @@ void Client::OnTimer()  {
 
 void Client::slotReConnect()
 {
-    socket->connectToHost(sHost,9999);
+    socket->connectToHost(sHost,ui->linePort->text().toInt());
     if(socket->waitForConnected(1000))  {
         this->setWindowTitle("Connected to Server");
         ui->textEdit->append(QString("System :: connected to server"));
@@ -269,5 +293,16 @@ void Client::on_pushButton_2_clicked()  {
     connect(reconnect_timer,SIGNAL(timeout()),this,SLOT(slotReConnect()));
     connect(socket,SIGNAL(connected()),this,SLOT(slotStopReConnect()));
     connect(socket,SIGNAL(disconnected()),this,SLOT(slotStartReConnect()));
+
+    QString SettingsName = "config.ini";
+    QSettings settings(SettingsName, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+
+    settings.beginGroup("MAIN_SETTINGS");
+    settings.setValue("ServerPort",ui->linePort->text().toInt());
+    settings.setValue("MainNode",ui->lineMain->text().toInt());
+    settings.setValue("NodeId",ui->lineCurrent->text().toInt());
+    settings.setValue("FrameType",ui->lineFrame->text().toInt());
+    settings.endGroup();
 
 }
