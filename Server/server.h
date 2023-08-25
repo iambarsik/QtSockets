@@ -23,7 +23,8 @@ typedef struct  {
 enum command_type   {
     com_init,
     com_buffer,
-    com_ping
+    com_ping,
+    com_package
 };
 
 class Server : public QMainWindow
@@ -36,6 +37,7 @@ public:
 
     bool isStarted() { return m_started; }
     void addCommand(command_t command);
+    void addPackage(QByteArray package);
 
 signals:
     void newMessage(QString);
@@ -57,10 +59,22 @@ private slots:
 
     void on_pushButton_2_clicked();
 
+    void on_pushButton_3_clicked();
+
+    void on_pushButton_4_clicked();
+
+    void on_pushButton_5_clicked();
+
+    void on_pushButton_6_clicked();
+
+    void on_pushButton_7_clicked();
+
 private:
     Ui::Server *ui;
 
     bool bInited;
+
+    bool bSharedWindow;
 
     QTcpServer* m_server;
     bool m_started;

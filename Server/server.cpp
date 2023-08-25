@@ -4,6 +4,9 @@
 
 #include <QSettings>
 #include <QTextCodec>
+#include <QDataStream>
+#include <QFile>
+#include <QFileDialog>
 
 Server::Server(QMainWindow *parent)
     : QMainWindow(parent)
@@ -11,6 +14,9 @@ Server::Server(QMainWindow *parent)
 {
     ui->setupUi(this);
     m_started = false;
+
+    this->resize(473,599);
+    bSharedWindow = false;
 
     QString SettingsName = "config.ini";
     QSettings settings(SettingsName, QSettings::IniFormat);
@@ -22,6 +28,25 @@ Server::Server(QMainWindow *parent)
     ui->lineCurrent->setText((settings.value("NodeId", 3)).toString());
     ui->lineFrame->setText((settings.value("FrameType", 0)).toString());
     settings.endGroup();
+
+    if(QFile::exists("pack_param.pnf")) {
+
+        QFile file;
+        file.setFileName("pack_param.pnf");
+        if(file.open(QFile::ReadOnly))  {
+            QTextStream out(&file);
+            out.setCodec(QTextCodec::codecForName("UTF-8"));
+            QString line;
+            ui->lineCommandPack->setText(out.readLine());
+            while (out.readLineInto(&line)) {
+                ui->listWidget->addItem(line.toUtf8());
+                line.clear();
+            }
+        }
+        file.close();
+    }
+
+
 }
 
 Server::~Server()   {
@@ -211,8 +236,8 @@ void Server::sendMessage(QTcpSocket* socket, command_type type)    {
             // 8 байт - заголовок кадра
             dataSend.append((char) 0x00);           // 1 байт - 0
             dataSend.append((char) 0x08);           // 2 байт - текущая длинна кадра в байтах (включая размер заголовка)
-            dataSend.append((char) NodeID);         // 3 байт - идентификатор получателя
-            dataSend.append((char) MainNode);       // 4 байт - идентификатор отправителя (номер узла)
+            dataSend.append((char) MainNode);       // 3 байт - идентификатор получателя
+            dataSend.append((char) NodeID);         // 4 байт - идентификатор отправителя (номер узла)
             dataSend.append((char) 0x00);           // 5 байт - флаг кадра ( 0 - я сервер, 1 - я клинет )
             dataSend.append((char) FrameType);      // 6 байт - тип кадра 0
             dataSend.append((char) 0x00);           // 7 байт - зарезервировано
@@ -233,8 +258,8 @@ void Server::sendMessage(QTcpSocket* socket, command_type type)    {
                 // 8 байт - заголовок кадра
                 dataSend.append((char) 0x00);           // 1 байт - 0
                 dataSend.append((char) 0x18);           // 2 байт - текущая длинна кадра в байтах (включая размер заголовка)
-                dataSend.append((char) NodeID);         // 3 байт - идентификатор получателя
-                dataSend.append((char) MainNode);       // 4 байт - идентификатор отправителя (номер узла)
+                dataSend.append((char) MainNode);       // 3 байт - идентификатор получателя
+                dataSend.append((char) NodeID);         // 4 байт - идентификатор отправителя (номер узла)
                 dataSend.append((char) 0x00);           // 5 байт - флаг кадра ( 0 - я сервер, 1 - я клинет )
                 dataSend.append((char) FrameType);      // 6 байт - тип кадра 0
                 dataSend.append((char) 0x00);           // 7 байт - зарезервировано
@@ -257,6 +282,45 @@ void Server::sendMessage(QTcpSocket* socket, command_type type)    {
             socket->write(dataSend);
             socket->flush();
             socket->waitForBytesWritten(10);
+        break;
+        case com_package:
+
+            dataSend.clear();
+
+            int MainNode  = ui->lineMain->text().toInt();
+            int NodeID    = ui->lineCurrent->text().toInt();
+            int FrameType = ui->lineFrame->text().toInt();
+
+            // 8 байт - заголовок кадра
+            dataSend.append((char) 0x00);           // 1 байт - 0
+            dataSend.append((char) (8+bufferSend.size()+16));           // 2 байт - текущая длинна кадра в байтах (включая размер заголовка)
+            dataSend.append((char) MainNode);       // 3 байт - идентификатор получателя
+            dataSend.append((char) NodeID);         // 4 байт - идентификатор отправителя (номер узла)
+            dataSend.append((char) 0x00);           // 5 байт - флаг кадра ( 0 - я сервер, 1 - я клинет )
+            dataSend.append((char) FrameType);      // 6 байт - тип кадра 0
+            dataSend.append((char) 0x00);           // 7 байт - зарезервировано
+            dataSend.append((char) 0x00);           // 8 байт - зарезервировано
+/*
+            // 4 байта - модельное время команды в миллисекундах
+            bufferSend.append((char) 0x00);
+            bufferSend.append((char) 0x00);
+            bufferSend.append((char) 0x00);
+            bufferSend.append((char) 0x00);
+            // модельное время команды в миллисекундах
+*/
+            //qDebug() << "bufferSend.length()" << bufferSend.length() << "bufferSend" << bufferSend;
+            dataSend.append(bufferSend);
+            //dataSend[1] = (char) 0x18;     // меняем длинну кадра на 24
+            //dataSend[5] = (char) 0x7F;  // меняем тип кадра на 126
+            bufferSend.clear(); // очищаем буфер
+
+
+            socket->write(dataSend);
+            socket->flush();
+            socket->waitForBytesWritten(10);
+
+
+
         break;
     }
 }
@@ -290,6 +354,14 @@ void Server::addCommand(command_t command)  {
     ui->textEdit->append(QString("S -->> :: %1 %2 %3").arg(command.code).arg(command.par1).arg(command.par2));
     for(auto sock : connection_set) {
         sendMessage(sock, command_type::com_buffer);
+    }
+}
+
+void Server::addPackage(QByteArray package) {
+    for(auto sock : connection_set) {
+        bufferSend.clear();
+        bufferSend.append(package);
+        sendMessage(sock, com_package);
     }
 }
 
@@ -340,7 +412,6 @@ void Server::on_pushButton_2_clicked()
         m_started = true;
         ui->pushButton_2->setText("Стоп сервера");
 
-
         QString SettingsName = "config.ini";
         QSettings settings(SettingsName, QSettings::IniFormat);
         settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
@@ -353,4 +424,88 @@ void Server::on_pushButton_2_clicked()
         settings.endGroup();
 
     }
+}
+
+void Server::on_pushButton_3_clicked()  {
+
+    if(bSharedWindow)   {
+        this->resize(473,599);
+        bSharedWindow = false;
+    } else {
+        this->resize(800,599);
+        bSharedWindow = true;
+    }
+}
+
+void Server::on_pushButton_4_clicked()  {
+    if(!m_started)  {
+        ui->textEdit->append("not sended :: server isnt started");
+        return;
+    }
+
+    QByteArray pack;
+    pack.clear();
+
+    bool ok;
+    qint32 code = ui->lineCommandPack->text().toInt(&ok,16);
+
+    QDataStream stream(&pack,QIODevice::WriteOnly);
+
+    for(int i = 0; i < ui->listWidget->count(); i++)    {
+        QString s;
+        s.clear();
+        s = ui->listWidget->item(i)->text();
+        if(s.contains('.')) {
+            double buff = s.toDouble();
+            stream << buff;
+            qDebug() << buff;
+        } else {
+            qint32 buff = s.toInt();
+            stream << buff;
+            qDebug() << buff;
+        }
+    }
+
+    QByteArray arr;
+    arr.clear();
+
+    QDataStream arrstr(&arr,QIODevice::WriteOnly);
+    arrstr << code;
+    arrstr << pack.size();
+    arrstr << 0;
+    arrstr << 0;
+
+    pack.prepend(arr);
+
+    addPackage(pack);
+}
+
+void Server::on_pushButton_5_clicked()  {
+    ui->listWidget->addItem(ui->linePackParam->text());
+    ui->linePackParam->clear();
+    ui->linePackParam->setFocus();
+}
+
+void Server::on_pushButton_6_clicked()  {
+    ui->listWidget->takeItem(ui->listWidget->currentRow());
+}
+
+void Server::on_pushButton_7_clicked()  {
+    QFile file;
+    file.setFileName("pack_param.pnf");
+    file.open(QIODevice::WriteOnly);
+    QTextStream out(&file);
+    out.setCodec(QTextCodec::codecForName("UTF-8"));
+    out << ui->lineCommandPack->text();
+
+    if(ui->listWidget->count() > 0)
+        out << "\n";
+
+    for(int i = 0; i < ui->listWidget->count(); i++)    {
+        out << ui->listWidget->item(i)->text();
+        if(i < ui->listWidget->count() - 1)
+            out << "\n";
+
+    }
+    file.close();
 }
